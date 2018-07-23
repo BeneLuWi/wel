@@ -1,0 +1,62 @@
+\documentclass{scrartcl}
+
+% Change font and reload config
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+
+\usepackage{hyperref}
+
+\usepackage{amsfonts,amsmath,amssymb,amsthm} 
+\usepackage{marvosym}
+\usepackage[ngerman]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+
+\title{Wireless Electric Lock\\ \small{Hardware-nahe Systemprogrammierung}}
+\author{Aaron Winziers\\Benedikt Lüken-Winkels}
+\begin{document}
+
+
+%===============
+%
+%  Section
+%
+%===============
+
+\section{WLAN-Modul}
+\paragraph{Lua Module V2 ESP8266 ESP-12E}
+\begin{itemize}
+\item 4 MB Flash-Speicher
+\item Programmierung in C
+\item NodeMCU-Board
+\item Programmierung per Arduino möglich
+\item Selbstinduziertes Schlafen und Aufwecken des Chips (Stromsparen)
+\end{itemize}
+
+
+\subsection{Vorteile gegenüber Arduino}
+
+\begin{itemize}
+\item Höhere Taktfrequenz (80-160 Mhz)
+\item Vielfältige Speicherressourcen
+\end{itemize}
+
+%===============
+%  Subsection
+%===============
+
+
+
+\maketitle
+\tableofcontents
+\newpage
+
+
+
+%===============
+%
+%  END
+%
+%===============
+
+\end{document}
