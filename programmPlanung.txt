@@ -1,5 +1,0 @@
-1. Datenübermittlung/Kommunikation zwischen Geräten
-2. Signalaufnahme
-2.1 Signalinterpretation
-3. Schlosssteuerung
-4. Sicherheit
