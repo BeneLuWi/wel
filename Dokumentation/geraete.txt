@@ -1,0 +1,6 @@
+2x Lua Amica Module V2 ESP8266 ESP-12E WIFI Development Board mit CP2102
+Relais
+Türschloss
+Breadboards
+LEDs
+Widersände
