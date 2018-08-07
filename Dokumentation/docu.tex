@@ -26,7 +26,14 @@
 %
 %===============
 
-\section{WLAN-Modul}
+\section{Hardware}\label{sec:hard}
+
+
+%===============
+%  Subsection
+%===============
+\subsection{WLAN-Modul}
+
 \paragraph{Lua Module V2 ESP8266 ESP-12E}
 \begin{itemize}
 \item 4 MB Flash-Speicher
@@ -38,6 +45,10 @@
 \end{itemize}
 
 
+%===============
+%  Subsection
+%===============
+
 \subsection{Vorteile gegenüber Arduino}
 
 \begin{itemize}
@@ -45,14 +56,60 @@
 \item Vielfältige Speicherressourcen
 \end{itemize}
 
-%===============
-%  Subsection
-%===============
 
 
 
 \newpage
 
+%===============
+%
+%  Section
+%
+%===============
+
+\section{Programmierung}\label{sec:soft}
+
+
+%===============
+%  Subsection
+%===============
+
+\subsection{Messen des Klingelrythmusses}\label{ssec:mess}
+
+\paragraph{Ideen}
+\begin{itemize}
+\item Unterscheidung der verschiedenen Klingellängen durch Anpassung an den Klingler
+\begin{itemize}
+\item Datenerhebung durch verschiedene Testpersonen, wie sich die Klingellängen bei lang und kurz unterscheiden
+\item Bsp. $Time($Kurz$) = \frac{2}{3} Time($Lang$)$
+\item[$\Rightarrow$] Dafür entweder Heuristik oder einmal lang, einmal kurz zum justieren.
+\end{itemize}
+\item Orientierung für den Klingler durch visuelle Elemente
+\begin{itemize}
+\item Display, das die Klingellänge durch Balken anzeigt \ref{ssec:lcd}
+\item LED, das ein Tempo angibt
+\end{itemize}
+\end{itemize}
+
+
+%===============
+%  Subsection
+%===============
+
+\subsection{1602A (HD44780) LCD - Anzeige}\label{ssec:lcd} 
+
+% Spezifikation
+% https://www.openhacks.com/uploadsproductos/eone-1602a1.pdf
+
+5 Pixel breit und 8 Pixel hoch. Zwischen den Feldern sind Lücken, die 1 Pixel groß sind.
+\paragraph{Idee} Darstellung der Klingellänge als horizontal aufsteigende Balken
+\begin{itemize}
+\item Probleme bei der Darstellung
+\begin{itemize}
+\item Dynamische Aktualisierung der Pixel
+\item Custom Characters (keine Standardbelegung)
+\end{itemize}
+\end{itemize}
 
 
 %===============
