@@ -2,13 +2,14 @@
 
 
 // constants won't change. They're used here to set pin numbers:
-const int buttonPin = 16;    // the number of the pushbutton pin
+const int buttonPin = 5;    // the number of the pushbutton pin
 const int pushes = 5;        // how many pushes are accounted
 
 // Variables will change:
 int buttonState;             // the current reading from the input pin: HIGH = pushed, Low = pushed
 int lastButtonState = LOW;   // the previous reading from the input pin
 int pushed = 0;
+int firstPush = 1;
 int i = 0;
 
 //char output[5*sizeof(unsigned long) + 4];
@@ -17,9 +18,9 @@ int i = 0;
 // milliseconds, will quickly become a bigger number than can be stored in an int.
 unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
 unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
-unsigned long pushedDuration = 0;    // duration of push
-unsigned long pushedStart = 0;
-unsigned long durations[pushes];
+unsigned long intervalDuration = 0;    // duration of push
+unsigned long intervalStart = 0;
+unsigned long durations[2 * pushes];
 
 
 void setup() {
@@ -52,30 +53,47 @@ void checkButtonState() {
     if (reading != buttonState) {
       buttonState = reading;
       if(buttonState == HIGH){
+        
+        //LOW-Interval ends
+        if(firstPush == 0) addDuration(millis() - intervalStart); //intervalDuration
+        
+        firstPush = 0;
         pushed = 1;
-        pushedStart = millis();
+        // HIGH-Interval starts
+        intervalStart = millis();
+        
+        //TODO go 1 to the right with output 
+        
       }
     }
     if(buttonState == LOW && pushed){
-      pushedDuration = millis() - pushedStart;
+      intervalDuration = millis() - intervalStart;
       pushed = 0;
+      // LOW-Interval starts
+      intervalStart = millis();
 
-      if(i < pushes - 1){
-        durations[i++] = pushedDuration;
-      }
-      else if(i == pushes-1){
-        durations[i++] = pushedDuration;
-        for(int j = 0; j < pushes; j++){
-          Serial.println(durations[j]);
-        }
-        i = 0;
-      }
+      addDuration(intervalDuration);
+
     }
   }
 
   // save the reading. Next time through the loop, it'll be the lastButtonState:
   lastButtonState = reading;
   
+}
+
+void addDuration(unsigned long int interDuration){
+
+    if(i < 2*pushes - 1){
+      durations[i++] = interDuration;
+    }
+    else if(i == 2*pushes-1){
+      durations[i++] = interDuration;
+      for(int j = 0; j < 2*pushes; j++){
+        Serial.println(durations[j]);
+      }
+      i = 0;
+    }
 }
 
 void checkCode(){
@@ -85,7 +103,7 @@ void checkCode(){
 
 void displayCode(){
   //Create Output for LCD
-  
+  //Check the duration
   
 }
 
