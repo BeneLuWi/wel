@@ -1,9 +1,9 @@
 #include <LiquidCrystal.h>
 
-
 // constants won't change. They're used here to set pin numbers:
-const int buttonPin = 5;    // the number of the pushbutton pin
+const int buttonPin = 16;    // the number of the pushbutton pin
 const int pushes = 5;        // how many pushes are accounted
+
 
 // Variables will change:
 int buttonState;             // the current reading from the input pin: HIGH = pushed, Low = pushed
@@ -12,7 +12,20 @@ int pushed = 0;
 int firstPush = 1;
 int i = 0;
 
-//char output[5*sizeof(unsigned long) + 4];
+// lcd Ouputdevice
+LiquidCrystal lcd(D1, D2, D4, D5, D6, D7);  // RS, E, D4, D5, D6, D7
+
+// Different States of a Character
+byte customChar[8][8] = {
+  {0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x1F},
+  {0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x1F,  0x1F},
+  {0x00,  0x00,  0x00,  0x00,  0x00,  0x1F,  0x1F,  0x1F},
+  {0x00,  0x00,  0x00,  0x00,  0x1F,  0x1F,  0x1F,  0x1F},
+  {0x00,  0x00,  0x00,  0x1F,  0x1F,  0x1F,  0x1F,  0x1F},
+  {0x00,  0x00,  0x1F,  0x1F,  0x1F,  0x1F,  0x1F,  0x1F},
+  {0x00,  0x1F,  0x1F,  0x1F,  0x1F,  0x1F,  0x1F,  0x1F},
+  {0x1F,  0x1F,  0x1F,  0x1F,  0x1F,  0x1F,  0x1F,  0x1F},
+};
 
 // the following variables are unsigned longs because the time, measured in
 // milliseconds, will quickly become a bigger number than can be stored in an int.
@@ -24,10 +37,18 @@ unsigned long durations[2 * pushes];
 
 
 void setup() {
+  lcd.begin(16,2);
+  for (int j = 0; j < 7; j++){
+    lcd.createChar(j, customChar[j]);
+  }
+  
   pinMode(buttonPin, INPUT);
   
   Serial.begin(115200);
   Serial.println("Init: Button Low");
+
+  lcd.setCursor(0,0); 
+  //lcd.print("Hello Aaron");
 }
 
 void checkButtonState() {
@@ -53,16 +74,23 @@ void checkButtonState() {
     if (reading != buttonState) {
       buttonState = reading;
       if(buttonState == HIGH){
+
+        // If first push: clear the display and set the cursor to the upper left
+        if(i == 0){
+          lcd.clear();
+        }
         
-        //LOW-Interval ends
+        // if LOW-Interval ends
         if(firstPush == 0) addDuration(millis() - intervalStart); //intervalDuration
         
         firstPush = 0;
         pushed = 1;
+        
         // HIGH-Interval starts
         intervalStart = millis();
         
-        //TODO go 1 to the right with output 
+        //go 1 to the right with output 
+        lcd.setCursor(i, 0);
         
       }
     }
@@ -76,6 +104,8 @@ void checkButtonState() {
 
     }
   }
+
+  displayCode(reading);
 
   // save the reading. Next time through the loop, it'll be the lastButtonState:
   lastButtonState = reading;
@@ -96,15 +126,19 @@ void addDuration(unsigned long int interDuration){
     }
 }
 
+// Check whether entered code opens door    
 void checkCode(){
-   //Check whether entered code opens door
-    
+   
 }
 
-void displayCode(){
-  //Create Output for LCD
-  //Check the duration
-  
+// Create Output for LCD
+// Check the duration
+void displayCode(int current){
+  // get one more row for each 125ms that remain in the same state  
+  int p = (millis() - intervalStart) / 125;
+  if(p > 7) p = 7;
+  Serial.println(p);
+  lcd.write(p);
 }
 
 
