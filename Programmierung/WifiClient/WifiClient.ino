@@ -1,4 +1,7 @@
-#include <LiquidCrystal.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <ESP8266WiFi.h>
+
 
 // constants won't change. They're used here to set pin numbers:
 const int buttonPin = 16;    // the number of the pushbutton pin
@@ -13,7 +16,9 @@ int firstPush = 1;
 int i = 0;
 
 // lcd Ouputdevice
-LiquidCrystal lcd(D1, D2, D4, D5, D6, D7);  // RS, E, D4, D5, D6, D7
+// old example (no I2C) LiquidCrystal lcd(D1, D2, D4, D5, D6, D7);  // RS, E, D4, D5, D6, D7
+
+LiquidCrystal_I2C lcd(0x3F, 16, 2);
 
 // Different States of a Character
 byte customChar[8][8] = {
@@ -35,10 +40,15 @@ unsigned long intervalDuration = 0;    // duration of push
 unsigned long intervalStart = 0;
 unsigned long durations[2 * pushes];
 
-
+ 
 void setup() {
-  lcd.begin(16,2);
-  for (int j = 0; j < 7; j++){
+  Wire.begin(2,0);
+  lcd.init();   // initializing the LCD
+  lcd.backlight(); // Enable or Turn On the backlight 
+  lcd.print(" Hello Makers "); // Start Printin
+
+  
+  /*for (int j = 0; j < 7; j++){
     lcd.createChar(j, customChar[j]);
   }
   
@@ -46,9 +56,7 @@ void setup() {
   
   Serial.begin(115200);
   Serial.println("Init: Button Low");
-
-  lcd.setCursor(0,0); 
-  //lcd.print("Hello Aaron");
+*/
 }
 
 void checkButtonState() {
@@ -143,5 +151,5 @@ void displayCode(int current){
 
 
 void loop() {
-  checkButtonState();
+  //checkButtonState();
 }
