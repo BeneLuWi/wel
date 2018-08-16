@@ -1,11 +1,25 @@
-spo// #include <Wire.h>
+// #include <Wire.h>
 // #include <LiquidCrystal_I2C.h>
 #include <ESP8266WiFi.h>
+#include <string.h>
 
+/*
+D0   = 16;
+D1   = 5;
+D2   = 4;
+D3   = 0;
+D4   = 2;
+D5   = 14;
+D6   = 12;
+D7   = 13;
+D8   = 15;
+D9   = 3;
+D10  = 1;
+ */
 
 // constants won't change. They're used here to set pin numbers:
 const int buttonPin = 16;    // the number of the pushbutton pin
-const int pushes = 5;        // how many pushes are accounted
+const int pushes = 7;        // how many pushes are accounted
 
 
 // Variables will change:
@@ -44,14 +58,6 @@ unsigned long durations[2 * pushes];
 const char* ssid = "wel";
 const char* password = "password";
 
-// Local ESP web-server address
-String highHost = "http://192.168.4.1/high";
-String lowHost = "http://192.168.4.1/low";
-String data;
-// DEEP_SLEEP Timeout interval
-int sleepInterval = 5;
-// DEEP_SLEEP Timeout interval when connecting to AP fails
-int failConnectRetryInterval = 2;
 int counter = 0;
 
 WiFiClient client;
@@ -90,6 +96,7 @@ void setup() {
     Serial.print(".");
     counter++;
   }
+
   
   Serial.println("- wifi connected");
 
@@ -99,8 +106,6 @@ void setup() {
   
   pinMode(buttonPin, INPUT);
   
-
-  Serial.println("Init: Button Low");
 }
 
 void checkButtonState() {
@@ -170,12 +175,11 @@ void addDuration(unsigned long interDuration){
     if(i < 2*pushes - 1){
       durations[i++] = interDuration;
     }
-    else if(i == 2*pushes-1){
+    else if(i == 2*pushes-1){    
       durations[i++] = interDuration;
-      for(int j = 0; j < 2*pushes; j++){
-        Serial.println(durations[j]);
-      }
-      i = 0;
+
+      sendCode();
+
     }
 }
 
@@ -189,24 +193,57 @@ void connectToHost(){
     Serial.println("Connection to host failed");
   }
 }
-
-
-// Check whether entered code opens door    
+ 
 void sendCode(){
+
+   while(!client.connected()){
+    connectToHost();
+    delay(50);
+   }
+   
    if(client.connected()){
-      client.println("I love u Aaron");
-      Serial.println("Message sent");
+      // Create Output (code)
+      char code[2*pushes + 1];
+      int p;
+      for(int j = 0; j < 2*pushes; j++){
+        p = durations[j]/ 125;
+        if(p > 7) p = 7;
+
+        sprintf(&code[j], "%d", p);
+      }
+      code[2*pushes] = '\0';
+
+      i = 0;
+
+      // Send code to the server and wait for answer
+      Serial.println(code);
+      
+      Serial.print(client.println(code));
+      Serial.println(" Characters sent ");
+      
+      Serial.print("Waiting for answer:");
       int j=0;
+      code[0] = '\0';
+
+      // Wait 10 seconds for server's response
       while((!client.available()) && (j<1000)){
         delay(10);
+        if(j % 100 == 0){
+          Serial.print(".");
+        }
         j++;
       }
-      Serial.println(client.readStringUntil('\n'));
+      Serial.println("");
+
+      if(!client.available()){
+        Serial.println("Server not responding");
+      }else{
+        Serial.println(client.readStringUntil('\n'));
+      }
       
    }else{
-      Serial.println("Connection to host lost");
-      delay(1000);
-      connectToHost();
+      Serial.println("Connection to host lost...trying again");
+      sendCode();
    }
 
 }
@@ -223,6 +260,5 @@ void displayCode(int current){
 
 
 void loop() {
-  //checkButtonState();
-  sendCode();
+  checkButtonState();
 }
