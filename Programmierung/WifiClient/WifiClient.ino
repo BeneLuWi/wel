@@ -1,5 +1,5 @@
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
+spo// #include <Wire.h>
+// #include <LiquidCrystal_I2C.h>
 #include <ESP8266WiFi.h>
 
 
@@ -18,10 +18,10 @@ int i = 0;
 // lcd Ouputdevice
 // old example (no I2C) LiquidCrystal lcd(D1, D2, D4, D5, D6, D7);  // RS, E, D4, D5, D6, D7
 
-LiquidCrystal_I2C lcd(0x3F, 16, 2);
+// LiquidCrystal_I2C lcd(0x3F, 16, 2);
 
 // Different States of a Character
-byte customChar[8][8] = {
+ byte customChar[8][8] = {
   {0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x1F},
   {0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x1F,  0x1F},
   {0x00,  0x00,  0x00,  0x00,  0x00,  0x1F,  0x1F,  0x1F},
@@ -40,23 +40,67 @@ unsigned long intervalDuration = 0;    // duration of push
 unsigned long intervalStart = 0;
 unsigned long durations[2 * pushes];
 
- 
+// AP Wi-Fi credentials
+const char* ssid = "wel";
+const char* password = "password";
+
+// Local ESP web-server address
+String highHost = "http://192.168.4.1/high";
+String lowHost = "http://192.168.4.1/low";
+String data;
+// DEEP_SLEEP Timeout interval
+int sleepInterval = 5;
+// DEEP_SLEEP Timeout interval when connecting to AP fails
+int failConnectRetryInterval = 2;
+int counter = 0;
+
+WiFiClient client;
+
+const char* host = "192.168.4.1";
+
+/**************
+ * 
+ * Start Code
+ * 
+ *************/
 void setup() {
-  Wire.begin(2,0);
+ /* Wire.begin(2,0);
   lcd.init();   // initializing the LCD
   lcd.backlight(); // Enable or Turn On the backlight 
   lcd.print(" Hello Makers "); // Start Printin
 
-  
-  /*for (int j = 0; j < 7; j++){
+  for (int j = 0; j < 7; j++){
     lcd.createChar(j, customChar[j]);
   }
+  */
+  Serial.begin(115200);
+  Serial.println("");
+  
+  // Establish connection to dooropener
+  ESP.eraseConfig();
+  WiFi.persistent(false);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  Serial.println("");
+  while (WiFi.status() != WL_CONNECTED) {
+    if(counter > 20){
+       Serial.println("- can't connect, going to sleep");
+    }
+    delay(500);
+    Serial.print(".");
+    counter++;
+  }
+  
+  Serial.println("- wifi connected");
+
+
+  connectToHost();
+
   
   pinMode(buttonPin, INPUT);
   
-  Serial.begin(115200);
+
   Serial.println("Init: Button Low");
-*/
 }
 
 void checkButtonState() {
@@ -85,7 +129,7 @@ void checkButtonState() {
 
         // If first push: clear the display and set the cursor to the upper left
         if(i == 0){
-          lcd.clear();
+          // lcd.clear();
         }
         
         // if LOW-Interval ends
@@ -98,13 +142,14 @@ void checkButtonState() {
         intervalStart = millis();
         
         //go 1 to the right with output 
-        lcd.setCursor(i, 0);
+        // lcd.setCursor(i, 0);
         
       }
     }
     if(buttonState == LOW && pushed){
       intervalDuration = millis() - intervalStart;
       pushed = 0;
+      
       // LOW-Interval starts
       intervalStart = millis();
 
@@ -113,14 +158,14 @@ void checkButtonState() {
     }
   }
 
-  displayCode(reading);
+  // displayCode(reading);
 
   // save the reading. Next time through the loop, it'll be the lastButtonState:
   lastButtonState = reading;
   
 }
 
-void addDuration(unsigned long int interDuration){
+void addDuration(unsigned long interDuration){
 
     if(i < 2*pushes - 1){
       durations[i++] = interDuration;
@@ -134,9 +179,36 @@ void addDuration(unsigned long int interDuration){
     }
 }
 
+void connectToHost(){
+    if (client.connect(host, 80)){
+    // we are connected to the host!
+    Serial.println("Connected to Host");
+  }
+  else{
+    // connection failure
+    Serial.println("Connection to host failed");
+  }
+}
+
+
 // Check whether entered code opens door    
-void checkCode(){
-   
+void sendCode(){
+   if(client.connected()){
+      client.println("I love u Aaron");
+      Serial.println("Message sent");
+      int j=0;
+      while((!client.available()) && (j<1000)){
+        delay(10);
+        j++;
+      }
+      Serial.println(client.readStringUntil('\n'));
+      
+   }else{
+      Serial.println("Connection to host lost");
+      delay(1000);
+      connectToHost();
+   }
+
 }
 
 // Create Output for LCD
@@ -146,10 +218,11 @@ void displayCode(int current){
   int p = (millis() - intervalStart) / 125;
   if(p > 7) p = 7;
   Serial.println(p);
-  lcd.write(p);
+  // lcd.write(p);
 }
 
 
 void loop() {
   //checkButtonState();
+  sendCode();
 }
