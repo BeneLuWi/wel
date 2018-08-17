@@ -17,6 +17,9 @@ D9   = 3;
 D10  = 1;
  */
 
+// Code to unlock Door
+const int codeLength = 13;
+char code[codeLength] = {'0','7','0','4','0','4','0','4','0','4','0','5','0'};
 
 // Constants
 const int ledOpen = 5;
@@ -51,8 +54,24 @@ void readCode(){
   
 }
 
-void evalCode(){
-  
+void evalCode(const char * message){
+
+  if(strcmp(message, code) == 0){
+    Serial.println("Code accepted");
+    client.println("Code accepted");
+    digitalWrite(ledOpen, HIGH);
+    delay(3000);
+    digitalWrite(ledOpen, LOW);
+
+  }else{
+    Serial.println("Code declined");
+    client.println("Code declined");
+    digitalWrite(ledClosed, HIGH);
+    delay(3000);
+    digitalWrite(ledClosed, LOW);
+    
+  }
+  Serial.println("Answer sent");
 }
 
 void setCode(){
@@ -71,13 +90,17 @@ void loop() {
       if(client.available() != 0){
         Serial.println("");
         Serial.print("Message received: "); 
-        String message = client.readStringUntil('\n');
+
+        char message[codeLength];
+        client.readStringUntil('\n').toCharArray(message, codeLength);
+        
         client.flush();
         
         Serial.println(message);
         delay(1000);
-        client.println("Test Answer");
-        Serial.println("Answer sent");
+
+        evalCode(message);
+        
         delay(200);
         client.stop();
         Serial.println("Transmission ended");

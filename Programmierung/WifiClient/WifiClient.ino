@@ -19,8 +19,6 @@ D10  = 1;
 
 // constants won't change. They're used here to set pin numbers:
 const int buttonPin = 16;    // the number of the pushbutton pin
-const int pushes = 7;        // how many pushes are accounted
-
 
 // Variables will change:
 int buttonState;             // the current reading from the input pin: HIGH = pushed, Low = pushed
@@ -28,6 +26,9 @@ int lastButtonState = LOW;   // the previous reading from the input pin
 int pushed = 0;
 int firstPush = 1;
 int i = 0;
+int pushes = 7;              // how many pushes are accounted
+const int codeLength = 13;
+
 
 // lcd Ouputdevice
 // old example (no I2C) LiquidCrystal lcd(D1, D2, D4, D5, D6, D7);  // RS, E, D4, D5, D6, D7
@@ -52,7 +53,7 @@ unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
 unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
 unsigned long intervalDuration = 0;    // duration of push
 unsigned long intervalStart = 0;
-unsigned long durations[2 * pushes];
+unsigned long durations[14];
 
 // AP Wi-Fi credentials
 const char* ssid = "wel";
@@ -146,7 +147,7 @@ void checkButtonState() {
         // HIGH-Interval starts
         intervalStart = millis();
         
-        //go 1 to the right with output 
+        // go 1 to the right with output 
         // lcd.setCursor(i, 0);
         
       }
@@ -154,9 +155,9 @@ void checkButtonState() {
     if(buttonState == LOW && pushed){
       intervalDuration = millis() - intervalStart;
       pushed = 0;
-      
+
       // LOW-Interval starts
-      intervalStart = millis();
+      if(i < codeLength - 1) intervalStart = millis();
 
       addDuration(intervalDuration);
 
@@ -172,10 +173,10 @@ void checkButtonState() {
 
 void addDuration(unsigned long interDuration){
 
-    if(i < 2*pushes - 1){
+    if(i < codeLength - 1){
       durations[i++] = interDuration;
     }
-    else if(i == 2*pushes-1){    
+    else if(i == codeLength-1){    
       durations[i++] = interDuration;
 
       sendCode();
@@ -203,21 +204,25 @@ void sendCode(){
    
    if(client.connected()){
       // Create Output (code)
-      char code[2*pushes + 1];
+      char code[codeLength + 1];
       int p;
-      for(int j = 0; j < 2*pushes; j++){
+      for(int j = 0; j < codeLength; j++){
         p = durations[j]/ 125;
         if(p > 7) p = 7;
 
         sprintf(&code[j], "%d", p);
       }
-      code[2*pushes] = '\0';
+      code[codeLength] = '\0';
 
+      // reset vars to be ready for new input
       i = 0;
-
-      // Send code to the server and wait for answer
-      Serial.println(code);
+      durations[0] = '\0';
+      firstPush = 0;
       
+      // Send code to the server and wait for answer
+      // Test : char code1[codeLength+1] = {'0','7','0','4','0','4','0','4','0','4','0','5','0'};
+      //        code1[codeLength] = '\0';
+      Serial.println(code);
       Serial.print(client.println(code));
       Serial.println(" Characters sent ");
       
@@ -226,7 +231,7 @@ void sendCode(){
       code[0] = '\0';
 
       // Wait 10 seconds for server's response
-      while((!client.available()) && (j<1000)){
+      while((!client.available()) && (j<1500)){
         delay(10);
         if(j % 100 == 0){
           Serial.print(".");
@@ -237,6 +242,7 @@ void sendCode(){
 
       if(!client.available()){
         Serial.println("Server not responding");
+        client.stop();
       }else{
         Serial.println(client.readStringUntil('\n'));
       }
