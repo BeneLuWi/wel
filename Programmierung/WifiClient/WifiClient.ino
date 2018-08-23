@@ -31,7 +31,7 @@ const int codeLength = 13;
 
 
 // lcd Ouputdevice
-// old example (no I2C) LiquidCrystal lcd(D1, D2, D4, D5, D6, D7);  // RS, E, D4, D5, D6, D7
+// old example /wno I2C LiquidCrystal lcd(D1, D2, D4, D5, D6, D7);  // RS, E, D4, D5, D6, D7
 
 // LiquidCrystal_I2C lcd(0x3F, 16, 2);
 
@@ -100,11 +100,7 @@ void setup() {
 
   
   Serial.println("- wifi connected");
-
-
-  connectToHost();
-
-  
+  connectToHost();  
   pinMode(buttonPin, INPUT);
   
 }
@@ -172,7 +168,6 @@ void checkButtonState() {
 }
 
 void addDuration(unsigned long interDuration){
-
     if(i < codeLength - 1){
       durations[i++] = interDuration;
     }
@@ -186,11 +181,9 @@ void addDuration(unsigned long interDuration){
 
 void connectToHost(){
     if (client.connect(host, 80)){
-    // we are connected to the host!
     Serial.println("Connected to Host");
   }
   else{
-    // connection failure
     Serial.println("Connection to host failed");
   }
 }
@@ -209,17 +202,17 @@ void sendCode(){
       for(int j = 0; j < codeLength; j++){
         p = durations[j]/ 125;
         if(p > 7) p = 7;
-
         sprintf(&code[j], "%d", p);
       }
       code[codeLength] = '\0';
 
       // reset vars to be ready for new input
       i = 0;
-      durations[0] = '\0';
-      firstPush = 0;
-      
+      firstPush = 1;
+			memset(durations, 0, sizeof(durations));
+
       // Send code to the server and wait for answer
+		//
       // Test : char code1[codeLength+1] = {'0','7','0','4','0','4','0','4','0','4','0','5','0'};
       //        code1[codeLength] = '\0';
       Serial.println(code);
@@ -235,16 +228,18 @@ void sendCode(){
         delay(10);
         if(j % 100 == 0){
           Serial.print(".");
-        }
+	     }
         j++;
       }
       Serial.println("");
 
       if(!client.available()){
         Serial.println("Server not responding");
+        client.flush(); 
         client.stop();
       }else{
         Serial.println(client.readStringUntil('\n'));
+        client.flush(); 
       }
       
    }else{
