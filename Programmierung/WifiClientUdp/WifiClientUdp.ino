@@ -18,11 +18,11 @@ D10  = 1;
  */
 
 // constants won't change. They're used here to set pin numbers:
-const int buttonPin = 16;    // the number of the pushbutton pin
+const int inputButton = 5;    // the number of the pushbutton pin
 
 // Variables will change:
 int buttonState;             // the current reading from the input pin: HIGH = pushed, Low = pushed
-int lastButtonState = LOW;   // the previous reading from the input pin
+int lastButtonState = HIGH;   // the previous reading from the input pin
 int pushed = 0;
 int firstPush = 1;
 int i = 0;
@@ -90,15 +90,17 @@ void setup() {
   udp.begin(localUdpPort);
   
   connectToWifi();
-  pinMode(buttonPin, INPUT);
+  pinMode(inputButton, INPUT_PULLUP);
+  
   
 }
 
-void checkButtonState() {
+int checkButtonState() {
 // based on https://www.arduino.cc/en/Tutorial/Debounce
+// LOW when the button is being pushed, HIGH when released
 // read the state of the switch into a local variable:
-  int reading = digitalRead(buttonPin);
-
+  int reading = digitalRead(inputButton);
+  int codeCompleted = 0;
   // check to see if you just pressed the button
   // (i.e. the input went from LOW to HIGH), and you've waited long enough
   // since the last press to ignore any noise:
@@ -116,36 +118,36 @@ void checkButtonState() {
     // if the button state has changed:
     if (reading != buttonState) {
       buttonState = reading;
-      if(buttonState == HIGH){
+      if(buttonState == LOW){
 
         // If first push: clear the display and set the cursor to the upper left
         if(i == 0){
           // lcd.clear();
         }
         
-        // if LOW-Interval ends
-        if(firstPush == 0) addDuration(millis() - intervalStart); //intervalDuration
+        // if released-Interval ends
+        if(firstPush == 0) codeCompleted = addDuration(millis() - intervalStart); //intervalDuration
         
         firstPush = 0;
         pushed = 1;
         
-        // HIGH-Interval starts
+        // pushed-Interval starts
         intervalStart = millis();
         
         // go 1 to the right with output 
         // lcd.setCursor(i, 0);
         
       }
-    }
-    if(buttonState == LOW && pushed){
-      intervalDuration = millis() - intervalStart;
-      pushed = 0;
+      if(buttonState == HIGH && pushed){
+        intervalDuration = millis() - intervalStart;
+        pushed = 0;
+  
+        // released-Interval starts
+        if(i < codeLength - 1) intervalStart = millis();
+  
+        codeCompleted = addDuration(intervalDuration);
 
-      // LOW-Interval starts
-      if(i < codeLength - 1) intervalStart = millis();
-
-      addDuration(intervalDuration);
-
+      }
     }
   }
 
@@ -153,19 +155,16 @@ void checkButtonState() {
 
   // save the reading. Next time through the loop, it'll be the lastButtonState:
   lastButtonState = reading;
-  
+  return codeCompleted;
 }
 
-void addDuration(unsigned long interDuration){
-    if(i < codeLength - 1){
-      durations[i++] = interDuration;
-    }
-    else if(i == codeLength-1){    
-      durations[i++] = interDuration;
-
-      sendCode();
-
-    }
+int addDuration(unsigned long interDuration){
+// returns 1 if code is complete, 0 if not
+    durations[i++] = interDuration;
+    if(i < codeLength) return 0;
+    //else
+    return 1;
+    
 }
 
 void connectToWifi(){
@@ -208,9 +207,6 @@ void sendCode(){
     code[codeLength] = '\0';
 
     // Send code to the server and wait for answer
-	  //
-    // Test : char code1[codeLength+1] = {'0','7','0','4','0','4','0','4','0','4','0','5','0'};
-    //        code1[codeLength] = '\0';
     Serial.println(code);
     
     udp.beginPacket(host, 4210);
@@ -223,11 +219,11 @@ void sendCode(){
   
     int packetSize = udp.parsePacket();
 
-    // Wait 10 seconds for server's response
-    while( !packetSize && (j<1500)){
+    // Wait 2 seconds for server's response
+    while( !packetSize && (j<200)){
       delay(10);
       packetSize = udp.parsePacket();
-      if(j % 100 == 0){
+      if(j % 10 == 0){
         Serial.print(".");
       }
       j++;
@@ -265,5 +261,5 @@ void displayCode(int current){
 
 
 void loop() {
-  checkButtonState();
+  if(checkButtonState()) sendCode();
 }

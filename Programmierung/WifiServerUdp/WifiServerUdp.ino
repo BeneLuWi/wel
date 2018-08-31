@@ -20,12 +20,11 @@ D10  = 1;
  */
 
 // Variables will change:
-int buttonState;             // the current reading from the input pin: HIGH = pushed, Low = pushed
-int lastButtonState = LOW;   // the previous reading from the input pin
+int buttonState = HIGH;             // the current reading from the input pin: HIGH = pushed, Low = pushed
+int lastButtonState = HIGH;   // the previous reading from the input pin
 int pushed = 0;
 int firstPush = 1;
 int i = 0;
-int pushes = 7;              // how many pushes are accounted
 int packetSize = 0;
 
 // the following variables are unsigned longs because the time, measured in
@@ -34,19 +33,18 @@ unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
 unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
 unsigned long intervalDuration = 0;    // duration of push
 unsigned long intervalStart = 0;
-unsigned long durations[14];
+unsigned long durations[65];
+unsigned long inputEnd = 3000;
 
 // Code to unlock Door
-const int codeLength = 13;
-char code[codeLength] = {'0','3','0','1','0','1','0','2','0','7','0','2','0'};
+int codeLength = 0;
+char code[64] = {'0','3','0','1','0','1','0','2','0','7','0','2','0'};
 
 // Constants
-const int ledOpen = 5;
-const int ledClosed = 4;
-const int resetButton = 0;
-const int inputButton = 2;
+const int resetButton = D1;
+const int inputButton = D2;
 const int relayPin = 13;
-const int doorLedPin = 12;
+const int resetLED = D0;
 
 // Wifi Credentials
 const char *ssid = "wel";
@@ -63,16 +61,15 @@ WiFiClient client;
 void setup() {
   Serial.begin(115200);
   Serial.println();
-  pinMode(ledClosed, OUTPUT);
-  pinMode(ledOpen, OUTPUT);
-
+  
   pinMode(relayPin, OUTPUT);
-  pinMode(doorLedPin, OUTPUT);
 
-	//pinMode(resetButton, INPUT);
-	//pinMode(inputButton, INPUT); 
+  pinMode(resetLED, OUTPUT);
+  digitalWrite(resetLED, LOW);
 
-  //digitalWrite(doorLedPin, HIGH);
+  pinMode(resetButton, INPUT_PULLUP );
+  pinMode(inputButton, INPUT_PULLUP );
+
   
   Serial.print("Configuring access point...");
   /* You can remove the password parameter if you want the AP to be open. */
@@ -94,10 +91,6 @@ void setup() {
 
 }
 
-void readCode(){
-  
-}
-
 void evalCode(const char * message){
 
   int correct = 1;
@@ -115,10 +108,10 @@ void evalCode(const char * message){
       char answer[] = "Code accepted";
       udp.write(answer, sizeof answer);
       if(!udp.endPacket()) Serial.println("Error sending answer");
-      digitalWrite(ledOpen, HIGH);
+      //digitalWrite(ledOpen, HIGH);
       //digitalWrite(relayPin, HIGH);
       delay(3000);
-      digitalWrite(ledOpen, LOW);
+      //digitalWrite(ledOpen, LOW);
       //digitalWrite(relayPin, LOW);
       break;
     }
@@ -126,9 +119,9 @@ void evalCode(const char * message){
       char answer[] = "Code declined";
       udp.write(answer, sizeof answer);
       if(!udp.endPacket()) Serial.println("Error sending answer");
-      digitalWrite(ledClosed, HIGH);
+      //digitalWrite(ledClosed, HIGH);
       delay(3000);
-      digitalWrite(ledClosed, LOW);
+      //digitalWrite(ledClosed, LOW);
       break;
     }
   }
@@ -136,14 +129,34 @@ void evalCode(const char * message){
 
 
 void setCode(){
+  Serial.println("Reseting code");
+  digitalWrite(resetLED, HIGH);
+  // reset vars to be ready for new input
+  lastButtonState = HIGH;
+  buttonState = HIGH;
+  i = 0;
+  firstPush = 1;
+  memset(durations, 0, sizeof(durations));   
+  memset(code, '0', sizeof(code));   
+  codeLength = 0;
+    
+  while(true){
+    if(checkButtonState()) break;
+    delay(1);
+  }
+  Serial.println(code);
+  Serial.println(codeLength);
   
+  digitalWrite(resetLED, LOW);
 }
 
-void checkButtonState() {
+int checkButtonState() {
 // based on https://www.arduino.cc/en/Tutorial/Debounce
+// LOW when the button is being pushed, HIGH when released
 // read the state of the switch into a local variable:
   int reading = digitalRead(inputButton);
-
+  
+  int codeCompleted = 0;
   // check to see if you just pressed the button
   // (i.e. the input went from LOW to HIGH), and you've waited long enough
   // since the last press to ignore any noise:
@@ -153,75 +166,83 @@ void checkButtonState() {
     // reset the debouncing timer
     lastDebounceTime = millis();
   }
-
-  if ((millis() - lastDebounceTime) > debounceDelay) {
+  
+  if ( millis() - lastDebounceTime > debounceDelay) {
     // whatever the reading is at, it's been there for longer than the debounce
     // delay, so take it as the actual current state:
+    
+    if( millis() - lastDebounceTime > inputEnd && !firstPush){
+      createOutput(codeLength);
+      return 1;
+    }
 
     // if the button state has changed:
     if (reading != buttonState) {
+      codeLength++;
       buttonState = reading;
-      if(buttonState == HIGH){
+      if(buttonState == LOW){
 
         // If first push: clear the display and set the cursor to the upper left
         if(i == 0){
           // lcd.clear();
         }
         
-        // if LOW-Interval ends
-        if(firstPush == 0) addDuration(millis() - intervalStart); //intervalDuration
+        // if released-Interval ends
+        if(firstPush == 0) {
+          codeCompleted = addDuration(millis() - intervalStart); //intervalDuration
+        }
         
         firstPush = 0;
         pushed = 1;
         
-        // HIGH-Interval starts
+        // pushed-Interval starts
         intervalStart = millis();
         
         // go 1 to the right with output 
         // lcd.setCursor(i, 0);
         
       }
-    }
-    if(buttonState == LOW && pushed){
-      intervalDuration = millis() - intervalStart;
-      pushed = 0;
+      if(buttonState == HIGH && pushed){
+        intervalDuration = millis() - intervalStart;
+        pushed = 0;
+  
+        // released-Interval starts
+        if(i < codeLength - 1) intervalStart = millis();
+  
+        codeCompleted = addDuration(intervalDuration);
 
-      // LOW-Interval starts
-      if(i < codeLength - 1) intervalStart = millis();
-
-      addDuration(intervalDuration);
-
+      }
     }
   }
   // displayCode(reading);
+
   // save the reading. Next time through the loop, it'll be the lastButtonState:
   lastButtonState = reading;
+  return codeCompleted;
 }
 
-void addDuration(unsigned long interDuration){
+int addDuration(unsigned long interDuration){
+// returns 1 if code is complete, 0 if not
+
+    durations[i++] = interDuration;
+    if(i < codeLength) return 0;
     
-    // Code not competed
-    if(i < codeLength - 1){
-      durations[i++] = interDuration;
+}
+void createOutput(int len){
+    int p;
+    for(int j = 0; j < len - 1; j++){
+      p = durations[j]/ 125;
+      if(p > 7) p = 7;
+      sprintf(&code[j], "%d", p);
     }
-    // Code completed: Create Ouput-string and reset vars
-    else if(i == codeLength-1){    
-      durations[i++] = interDuration;
-      char code[codeLength + 1];
-      int p;
-      for(int j = 0; j < codeLength; j++){
-        p = durations[j]/ 125;
-        if(p > 7) p = 7;
-        sprintf(&code[j], "%d", p);
-      }
-      code[codeLength] = '\0';
 
-      // reset vars to be ready for new input
-      i = 0;
-      firstPush = 1;
-			memset(durations, 0, sizeof(durations));			
-
-    }
+    // Counting one time too much before
+    codeLength--;
+    
+    // reset vars to be ready for new input
+    i = 0;
+    firstPush = 1;
+    memset(durations, 0, sizeof(durations));      
 }
 
 void getMessage(){
@@ -239,5 +260,6 @@ void getMessage(){
 }
 
 void loop() {
+  if(digitalRead(resetButton) == LOW) setCode();
   getMessage();
 }
